@@ -1,60 +1,66 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
+	"embed"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/pressly/goose/v3"
 )
 
 var (
-	PORT     string
-	upgrader websocket.Upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
+	PORT    string
+	DB_CONN *sql.DB
+	//go:embed db/schema/*.sql
+	embedMigrations embed.FS
+)
+
+const (
+	DB_PATH string = "./app.db"
 )
 
 func init() {
 	godotenv.Load()
 
+	log.Println("loading env variables")
+
 	port := os.Getenv("PORT")
 	validateEnv(port, "PORT")
 	PORT = port
+
+	log.Println("env variables loaded")
+
+	log.Println("making a connection with DB")
+
+	conn, err := sql.Open("sqlite3", DB_PATH)
+	if err != nil {
+		log.Fatalf("failed to make a connection with DB: %v", err)
+	}
+	DB_CONN = conn
+
+	log.Println("DB connection formed!")
 }
 
-func handleWS(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println("failed to make a connection", err)
-		w.Write([]byte("failed"))
+func init() {
+	log.Println("running migrations")
+
+	goose.SetDialect("sqlite3")
+	goose.SetBaseFS(embedMigrations)
+
+	if err := goose.Up(DB_CONN, "db/schema"); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
 	}
-	defer conn.Close()
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
-		}
-	}
+
+	log.Println("migrations ran successfully")
 }
 
 func main() {
-	mux := http.NewServeMux()
-	fs := http.FileServer(http.Dir("assets"))
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/templates/index.html")
-	})
-	mux.HandleFunc("/ws", handleWS)
-	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
+	defer DB_CONN.Close()
+	mux := CreateMux()
 
 	srv := http.Server{
 		Addr:    ":" + PORT,
