@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/MudassirDev/go-chat/db/database"
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose/v3"
@@ -17,6 +18,7 @@ var (
 	DB_CONN *sql.DB
 	//go:embed db/schema/*.sql
 	embedMigrations embed.FS
+	DB              *database.Queries
 )
 
 const (
@@ -43,6 +45,13 @@ func init() {
 	DB_CONN = conn
 
 	log.Println("DB connection formed!")
+
+	log.Println("creating new DB Queries")
+
+	queries := database.New(conn)
+	DB = queries
+
+	log.Println("new DB Query created!")
 }
 
 func init() {
