@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -33,4 +34,35 @@ func CreateJWT(userID int64, jwtSecret string, expiryTime time.Duration) (string
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	})
 	return jwtToken.SignedString(jwtSecretKey)
+}
+
+func VerifyJWT(jwtSecret, token string) (int64, error) {
+	claims := jwt.RegisteredClaims{}
+	parsedToken, err := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (any, error) {
+		return []byte(jwtSecret), nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	issuer, err := parsedToken.Claims.GetIssuer()
+	if err != nil {
+		return 0, err
+	}
+
+	if issuer != ISSUER {
+		return 0, fmt.Errorf("issuer don't match")
+	}
+
+	rawId, err := parsedToken.Claims.GetSubject()
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := strconv.Atoi(rawId)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(id), nil
 }
