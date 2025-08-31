@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/MudassirDev/go-chat/db/database"
 	"github.com/joho/godotenv"
@@ -19,10 +20,13 @@ var (
 	//go:embed db/schema/*.sql
 	embedMigrations embed.FS
 	DB              *database.Queries
+	JWT_SECRET      string
 )
 
 const (
-	DB_PATH string = "./app.db"
+	DB_PATH     string        = "app.db"
+	EXPIRY_TIME time.Duration = time.Hour * 1
+	AUTH_KEY    string        = "auth_key"
 )
 
 func init() {
@@ -33,6 +37,10 @@ func init() {
 	port := os.Getenv("PORT")
 	validateEnv(port, "PORT")
 	PORT = port
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	validateEnv(jwtSecret, "JWT_SECRET")
+	JWT_SECRET = jwtSecret
 
 	log.Println("env variables loaded")
 

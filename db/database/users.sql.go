@@ -12,25 +12,55 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-  username, created_at, updated_at
+  username, password, created_at, updated_at
 ) VALUES (
-  ?, ?, ?
+  ?, ?, ?, ?
 )
 RETURNING id, username, created_at, updated_at
 `
 
 type CreateUserParams struct {
 	Username  string
+	Password  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.CreatedAt, arg.UpdatedAt)
+type CreateUserRow struct {
+	ID        int64
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRowContext(ctx, createUser,
+		arg.Username,
+		arg.Password,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i CreateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserWithUsername = `-- name: GetUserWithUsername :one
+SELECT id, username, password, created_at, updated_at FROM users WHERE username = ?
+`
+
+func (q *Queries) GetUserWithUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserWithUsername, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
+		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

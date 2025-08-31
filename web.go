@@ -14,7 +14,8 @@ func CreateMux() *http.ServeMux {
 	mux.HandleFunc("/ws", handleWS)
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
 
-	mux.HandleFunc("/api/users/create", handleCreateUsers)
+	mux.HandleFunc("POST /api/users/create", handleCreateUsers)
+	mux.HandleFunc("POST /api/users/login", handleLogin)
 
 	return mux
 }
