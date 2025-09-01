@@ -10,4 +10,7 @@ RETURNING id, username, created_at, updated_at;
 SELECT * FROM users WHERE username = ?;
 
 -- name: GetUserWithID :one
-SELECT * FROM users WHERE id = ?;
+SELECT id, username, created_at, updated_at FROM users WHERE id = ?;
+
+-- name: GetAllUsersExceptCurrent :many
+SELECT id, username, created_at, updated_at FROM users WHERE id != ?;

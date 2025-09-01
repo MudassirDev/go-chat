@@ -50,6 +50,39 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const getAllUsersExceptCurrent = `-- name: GetAllUsersExceptCurrent :many
+SELECT id, username, password, created_at, updated_at FROM users WHERE id != ?
+`
+
+func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id int64) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUsersExceptCurrent, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Password,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserWithID = `-- name: GetUserWithID :one
 SELECT id, username, password, created_at, updated_at FROM users WHERE id = ?
 `

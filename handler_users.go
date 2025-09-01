@@ -130,3 +130,27 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("logged in"))
 }
+
+func handlerUsers() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawUser := r.Context().Value(AUTH_KEY)
+		if rawUser == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("unauthorized"))
+			return
+		}
+		user, ok := rawUser.(database.User)
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("unauthorized"))
+			return
+		}
+		users, err := DB.GetAllUsersExceptCurrent(context.Background(), user.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("internal server error"))
+			return
+		}
+		templates.ExecuteTemplate(w, "users.html", users)
+	})
+}
