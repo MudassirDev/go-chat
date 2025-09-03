@@ -21,10 +21,11 @@ func CreateMux() *http.ServeMux {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		templates.ExecuteTemplate(w, "index.html", nil)
 	})
-	mux.HandleFunc("/ws", handleWS)
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
 	mux.Handle("/users", AuthMiddleware(handlerUsers()))
+	mux.Handle("GET /users/{userid}", AuthMiddleware(handlerChat()))
 
+	mux.Handle("/chat/{userid}", AuthMiddleware(handleWS()))
 	mux.HandleFunc("POST /api/users/create", handleCreateUsers)
 	mux.HandleFunc("POST /api/users/login", handleLogin)
 
@@ -34,11 +35,10 @@ func CreateMux() *http.ServeMux {
 func setupTemplate() {
 	filepath.WalkDir("static/templates", func(path string, d fs.DirEntry, err error) error {
 		if !d.IsDir() && strings.HasSuffix(path, ".html") {
-			tmpls, err := templates.ParseFiles(path)
+			_, err := templates.ParseFiles(path)
 			if err != nil {
 				log.Fatalf("failed to parse templates: %v", err)
 			}
-			templates = tmpls
 		}
 		return nil
 	})
