@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+type Message struct {
+	ID          int64
+	SenderID    int64
+	RecipientID int64
+	Time        time.Time
+	Message     string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type User struct {
 	ID        int64
 	Username  string

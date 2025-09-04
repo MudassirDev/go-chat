@@ -139,7 +139,7 @@ func handlerUsers() http.Handler {
 			w.Write([]byte("unauthorized"))
 			return
 		}
-		user, ok := rawUser.(database.User)
+		user, ok := rawUser.(database.GetUserWithIDRow)
 		if !ok {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("unauthorized"))

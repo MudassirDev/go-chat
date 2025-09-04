@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"embed"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -46,7 +47,7 @@ func init() {
 
 	log.Println("making a connection with DB")
 
-	conn, err := sql.Open("sqlite3", DB_PATH)
+	conn, err := sql.Open("sqlite3", fmt.Sprintf("file:%v?_foreign_keys=on", DB_PATH))
 	if err != nil {
 		log.Fatalf("failed to make a connection with DB: %v", err)
 	}

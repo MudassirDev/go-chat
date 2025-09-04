@@ -10,14 +10,20 @@
   </head>
   <body>
 
+    {{ $ID := .Recipient.ID }}
     <div id="chat">
       <div id="details">
         <button>Go Back</button>
-        <!-- <p>{{ .ID }}</p> -->
-        <p>{{ .Username }}</p>
+        <p>{{ .Recipient.Username }}</p>
       </div>
       <div id="chatbox">
-        <div class="main"></div>
+        <div class="main">
+          {{if .Messages}}
+          {{range .Messages}}
+          <p class="message {{if eq $ID .RecipientID}}right{{end}}">{{.Message}}</p>
+          {{end}}
+          {{end}}
+        </div>
         <div class="message-box">
           <form id="message-box">
             <input type="text" name="message" placeholder="Type your message here...">

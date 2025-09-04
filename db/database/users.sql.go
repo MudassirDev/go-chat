@@ -51,22 +51,28 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getAllUsersExceptCurrent = `-- name: GetAllUsersExceptCurrent :many
-SELECT id, username, password, created_at, updated_at FROM users WHERE id != ?
+SELECT id, username, created_at, updated_at FROM users WHERE id != ?
 `
 
-func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id int64) ([]User, error) {
+type GetAllUsersExceptCurrentRow struct {
+	ID        int64
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id int64) ([]GetAllUsersExceptCurrentRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAllUsersExceptCurrent, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	var items []GetAllUsersExceptCurrentRow
 	for rows.Next() {
-		var i User
+		var i GetAllUsersExceptCurrentRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Username,
-			&i.Password,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -84,16 +90,22 @@ func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id int64) ([]Use
 }
 
 const getUserWithID = `-- name: GetUserWithID :one
-SELECT id, username, password, created_at, updated_at FROM users WHERE id = ?
+SELECT id, username, created_at, updated_at FROM users WHERE id = ?
 `
 
-func (q *Queries) GetUserWithID(ctx context.Context, id int64) (User, error) {
+type GetUserWithIDRow struct {
+	ID        int64
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetUserWithID(ctx context.Context, id int64) (GetUserWithIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserWithID, id)
-	var i User
+	var i GetUserWithIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
-		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
