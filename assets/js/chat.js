@@ -30,6 +30,11 @@ function main() {
     console.log("working")
   }
 
+  websocket.onclose = e => {
+    console.log(e.code);
+    console.log(e);
+  }
+
   websocket.onmessage = e => {
     const message = JSON.parse(e.data)
     let sent = '';

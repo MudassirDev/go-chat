@@ -55,7 +55,6 @@ func handleWS() http.Handler {
 			err := conn.ReadJSON(&msg)
 			if err != nil {
 				delete(connections, user.ID)
-				log.Println(err)
 				return
 			}
 
@@ -75,14 +74,18 @@ func handleWS() http.Handler {
 				})
 				return
 			}
-			conn.WriteJSON(message)
+			err = conn.WriteJSON(message)
+			if err != nil {
+				log.Printf("error while writing: %v", err)
+			}
 
 			receiverConn, ok := connections[msg.Recipient]
 			if !ok {
 				log.Println(msg)
-				return
 			}
-			receiverConn.WriteJSON(msg)
+			if ok {
+				receiverConn.WriteJSON(msg)
+			}
 		}
 	})
 }
