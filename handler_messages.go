@@ -81,11 +81,9 @@ func handleWS() http.Handler {
 
 			receiverConn, ok := connections[msg.Recipient]
 			if !ok {
-				log.Println(msg)
+				continue
 			}
-			if ok {
-				receiverConn.WriteJSON(msg)
-			}
+			receiverConn.WriteJSON(msg)
 		}
 	})
 }

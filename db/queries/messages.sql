@@ -1,8 +1,8 @@
 -- name: CreateMessage :one
 INSERT INTO messages (
-  sender_id, recipient_id, time, message, created_at, updated_at
+  sender_id, recipient_id, time, content, message_type, created_at, updated_at
 ) VALUES (
-  ?, ?, ?, ?, ?, ?
+  ?, ?, ?, ?, ?, ?, ?
 )
 RETURNING *;
 
