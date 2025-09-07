@@ -62,7 +62,8 @@ func handleWS() http.Handler {
 				SenderID:    user.ID,
 				RecipientID: msg.Recipient,
 				Time:        msg.Time,
-				Message:     msg.Content,
+				Content:     msg.Content,
+				MessageType: "TEXT",
 				CreatedAt:   time.Now(),
 				UpdatedAt:   time.Now(),
 			})

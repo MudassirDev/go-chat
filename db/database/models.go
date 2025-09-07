@@ -13,7 +13,8 @@ type Message struct {
 	SenderID    int64
 	RecipientID int64
 	Time        time.Time
-	Message     string
+	Content     string
+	MessageType string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

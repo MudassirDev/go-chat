@@ -12,18 +12,19 @@ import (
 
 const createMessage = `-- name: CreateMessage :one
 INSERT INTO messages (
-  sender_id, recipient_id, time, message, created_at, updated_at
+  sender_id, recipient_id, time, content, message_type, created_at, updated_at
 ) VALUES (
-  ?, ?, ?, ?, ?, ?
+  ?, ?, ?, ?, ?, ?, ?
 )
-RETURNING id, sender_id, recipient_id, time, message, created_at, updated_at
+RETURNING id, sender_id, recipient_id, time, content, message_type, created_at, updated_at
 `
 
 type CreateMessageParams struct {
 	SenderID    int64
 	RecipientID int64
 	Time        time.Time
-	Message     string
+	Content     string
+	MessageType string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -33,7 +34,8 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		arg.SenderID,
 		arg.RecipientID,
 		arg.Time,
-		arg.Message,
+		arg.Content,
+		arg.MessageType,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -43,7 +45,8 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		&i.SenderID,
 		&i.RecipientID,
 		&i.Time,
-		&i.Message,
+		&i.Content,
+		&i.MessageType,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -51,7 +54,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 }
 
 const getChatMessages = `-- name: GetChatMessages :many
-SELECT id, sender_id, recipient_id, time, message, created_at, updated_at FROM messages WHERE (recipient_id = ? AND sender_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY time ASC
+SELECT id, sender_id, recipient_id, time, content, message_type, created_at, updated_at FROM messages WHERE (recipient_id = ? AND sender_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY time ASC
 `
 
 type GetChatMessagesParams struct {
@@ -80,7 +83,8 @@ func (q *Queries) GetChatMessages(ctx context.Context, arg GetChatMessagesParams
 			&i.SenderID,
 			&i.RecipientID,
 			&i.Time,
-			&i.Message,
+			&i.Content,
+			&i.MessageType,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
