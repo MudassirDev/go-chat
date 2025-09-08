@@ -56,6 +56,7 @@ class ChatBox {
       return
     }
     this.sendMessage(this.messageTypes.TEXT_TYPE, message);
+    this.messageInput.value = "";
   }
 
   // handle audio message
