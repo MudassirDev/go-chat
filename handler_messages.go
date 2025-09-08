@@ -19,9 +19,11 @@ var upgrader websocket.Upgrader = websocket.Upgrader{
 }
 
 type Message struct {
-	Recipient int64     `json:"recipient_id"`
-	Content   string    `json:"content"`
-	Time      time.Time `json:"time"`
+	Recipient   int64     `json:"recipient_id"`
+	MessageType string    `json:"message_type"`
+	Content     string    `json:"content,omitempty"`
+	ContentData []byte    `json:"content_data,omitempty"`
+	Time        time.Time `json:"time"`
 }
 
 func handleWS() http.Handler {
@@ -54,37 +56,40 @@ func handleWS() http.Handler {
 		for {
 			err := conn.ReadJSON(&msg)
 			if err != nil {
+				log.Println(err)
 				delete(connections, user.ID)
 				return
 			}
+			log.Println(msg.MessageType)
 
-			message, err := DB.CreateMessage(context.Background(), database.CreateMessageParams{
-				SenderID:    user.ID,
-				RecipientID: msg.Recipient,
-				Time:        msg.Time,
-				Content:     msg.Content,
-				MessageType: "TEXT",
-				CreatedAt:   time.Now(),
-				UpdatedAt:   time.Now(),
-			})
-			if err != nil {
-				conn.WriteJSON(struct {
-					Message string `json:"msg"`
-				}{
-					Message: "failed to send message",
-				})
-				return
-			}
-			err = conn.WriteJSON(message)
-			if err != nil {
-				log.Printf("error while writing: %v", err)
-			}
-
-			receiverConn, ok := connections[msg.Recipient]
-			if !ok {
-				continue
-			}
-			receiverConn.WriteJSON(msg)
+			// message, err := DB.CreateMessage(context.Background(), database.CreateMessageParams{
+			// 	SenderID:    user.ID,
+			// 	RecipientID: msg.Recipient,
+			// 	Time:        msg.Time,
+			// 	Content:     msg.Content,
+			// 	MessageType: "TEXT",
+			// 	CreatedAt:   time.Now(),
+			// 	UpdatedAt:   time.Now(),
+			// })
+			// if err != nil {
+			// 	conn.WriteJSON(struct {
+			// 		Content string `json:"content"`
+			// 	}{
+			// 		Content: "failed to send message",
+			// 	})
+			// 	log.Println(err)
+			// 	return
+			// }
+			// err = conn.WriteJSON(message)
+			// if err != nil {
+			// 	log.Printf("error while writing: %v", err)
+			// }
+			//
+			// receiverConn, ok := connections[msg.Recipient]
+			// if !ok {
+			// 	continue
+			// }
+			// receiverConn.WriteJSON(msg)
 		}
 	})
 }
