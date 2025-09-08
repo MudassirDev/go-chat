@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
 
@@ -11,8 +12,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var connections map[int64]*websocket.Conn = make(map[int64]*websocket.Conn)
+const (
+	TEXT_MESSAGE  string = "TEXT"
+	AUDIO_MESSAGE string = "AUDIO"
+)
 
+var connections map[int64]*websocket.Conn = make(map[int64]*websocket.Conn)
 var upgrader websocket.Upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -60,36 +65,47 @@ func handleWS() http.Handler {
 				delete(connections, user.ID)
 				return
 			}
-			log.Println(msg.MessageType)
+			if msg.MessageType != AUDIO_MESSAGE && msg.MessageType != TEXT_MESSAGE {
+				continue
+			}
+			if msg.MessageType == AUDIO_MESSAGE {
+				filePath, err := SaveAudio(msg.ContentData)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				log.Println(filePath)
+				msg.Content = filePath
+			}
 
-			// message, err := DB.CreateMessage(context.Background(), database.CreateMessageParams{
-			// 	SenderID:    user.ID,
-			// 	RecipientID: msg.Recipient,
-			// 	Time:        msg.Time,
-			// 	Content:     msg.Content,
-			// 	MessageType: "TEXT",
-			// 	CreatedAt:   time.Now(),
-			// 	UpdatedAt:   time.Now(),
-			// })
-			// if err != nil {
-			// 	conn.WriteJSON(struct {
-			// 		Content string `json:"content"`
-			// 	}{
-			// 		Content: "failed to send message",
-			// 	})
-			// 	log.Println(err)
-			// 	return
-			// }
-			// err = conn.WriteJSON(message)
-			// if err != nil {
-			// 	log.Printf("error while writing: %v", err)
-			// }
-			//
-			// receiverConn, ok := connections[msg.Recipient]
-			// if !ok {
-			// 	continue
-			// }
-			// receiverConn.WriteJSON(msg)
+			message, err := DB.CreateMessage(context.Background(), database.CreateMessageParams{
+				SenderID:    user.ID,
+				RecipientID: msg.Recipient,
+				Time:        msg.Time,
+				Content:     msg.Content,
+				MessageType: msg.MessageType,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+			})
+			if err != nil {
+				conn.WriteJSON(struct {
+					Content string `json:"content"`
+				}{
+					Content: "failed to send message",
+				})
+				log.Println(err)
+				return
+			}
+			err = conn.WriteJSON(message)
+			if err != nil {
+				log.Printf("error while writing: %v", err)
+			}
+
+			receiverConn, ok := connections[msg.Recipient]
+			if !ok {
+				continue
+			}
+			receiverConn.WriteJSON(msg)
 		}
 	})
 }
@@ -144,12 +160,48 @@ func handlerChat() http.Handler {
 			})
 			return
 		}
-		templates.ExecuteTemplate(w, "chat", struct {
+		err = templates.ExecuteTemplate(w, "chat", struct {
 			Recipient database.GetUserWithIDRow `json:"recipient"`
 			Messages  []database.Message        `json:"messages"`
 		}{
 			Recipient: recipient,
 			Messages:  messages,
 		})
+		if err != nil {
+			log.Println(err)
+		}
+	})
+}
+
+func handleFiles() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawUser := r.Context().Value(AUTH_KEY)
+		if rawUser == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("unauthorized"))
+			return
+		}
+		user, ok := rawUser.(database.GetUserWithIDRow)
+		if !ok {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("unauthorized"))
+			return
+		}
+
+		filename := r.PathValue("filename")
+		filepath := path.Join("files", filename)
+
+		_, err := DB.GetMessageWithFileName(context.Background(), database.GetMessageWithFileNameParams{
+			Content:     filepath,
+			RecipientID: user.ID,
+			SenderID:    user.ID,
+		})
+
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, filepath)
 	})
 }

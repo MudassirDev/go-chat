@@ -20,7 +20,13 @@
         <div class="main">
           {{if .Messages}}
           {{range .Messages}}
-          <p class="message {{if eq $ID .RecipientID}}right{{end}}">{{.Content}}</p>
+          <div class="message {{if eq $ID .RecipientID}}right{{end}}">
+            {{if eq .MessageType "TEXT" }}
+            <p>{{ .Content }}</p>
+            {{else}}
+            <audio controls="true" src="/{{ .Content }}"></audio>
+            {{end}}
+          </div>
           {{end}}
           {{end}}
         </div>

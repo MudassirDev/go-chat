@@ -100,3 +100,29 @@ func (q *Queries) GetChatMessages(ctx context.Context, arg GetChatMessagesParams
 	}
 	return items, nil
 }
+
+const getMessageWithFileName = `-- name: GetMessageWithFileName :one
+SELECT id, sender_id, recipient_id, time, content, message_type, created_at, updated_at FROM messages WHERE content = ? AND (recipient_id = ? OR sender_id = ?)
+`
+
+type GetMessageWithFileNameParams struct {
+	Content     string
+	RecipientID int64
+	SenderID    int64
+}
+
+func (q *Queries) GetMessageWithFileName(ctx context.Context, arg GetMessageWithFileNameParams) (Message, error) {
+	row := q.db.QueryRowContext(ctx, getMessageWithFileName, arg.Content, arg.RecipientID, arg.SenderID)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.SenderID,
+		&i.RecipientID,
+		&i.Time,
+		&i.Content,
+		&i.MessageType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

@@ -24,6 +24,7 @@ func CreateMux() *http.ServeMux {
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
 	mux.Handle("/users", AuthMiddleware(handlerUsers()))
 	mux.Handle("GET /users/{userid}", AuthMiddleware(handlerChat()))
+	mux.Handle("GET /files/{filename}", AuthMiddleware(handleFiles()))
 
 	mux.Handle("/chat/{userid}", AuthMiddleware(handleWS()))
 	mux.HandleFunc("POST /api/users/create", handleCreateUsers)
