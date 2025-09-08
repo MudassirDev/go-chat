@@ -45,7 +45,6 @@ class ChatBox {
       alert("cannot send");
       return
     }
-    console.log("sending", data);
     this.connection.send(data)
   }
 
@@ -78,6 +77,7 @@ class ChatBox {
 
     this.mediaRecorder.onstop = async () => {
       const blob = new Blob(this.audioChunks);
+      this.audioChunks = [];
 
       try {
         const arrayBuffer = await blob.arrayBuffer();
@@ -140,7 +140,45 @@ class ChatBox {
   manageMessageHTML(e) {
     const rawData = e.data;
     const data = JSON.parse(rawData);
-    console.log(data);
+
+    if (data.MessageType == this.messageTypes.TEXT_TYPE) {
+      const message = this.createTextMessage(data);
+      this.chatbox.append(message);
+      return
+    }
+    const message = this.createAudioMessage(data);
+    this.chatbox.append(message);
+  }
+
+  // create text message
+  createTextMessage(data) {
+    const message = document.createElement("div");
+    message.classList.add("message");
+    if (data.RecipientID == this.recipientId) {
+      message.classList.add("right");
+    }
+
+    const p = document.createElement("p");
+    p.innerText = data.Content;
+
+    message.append(p);
+    return message
+  }
+
+  // create audio message
+  createAudioMessage(data) {
+    const message = document.createElement("div");
+    message.classList.add("message");
+    if (data.RecipientID == this.recipientId) {
+      message.classList.add("right");
+    }
+
+    const audio = document.createElement("audio");
+    audio.src = `/${data.Content}`;
+    audio.controls = true;
+
+    message.append(audio);
+    return message
   }
 
   // adding event listeners to respective elements
@@ -150,7 +188,9 @@ class ChatBox {
       this.handleTextMessage();
     })
 
-    this.connection.onmessage = this.manageMessageHTML;
+    this.connection.onmessage = e => {
+      this.manageMessageHTML(e);
+    };
     this.recordBtn.addEventListener("click", () => {
       this.handleAudioMessage();
     });

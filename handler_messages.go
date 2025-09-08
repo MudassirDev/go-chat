@@ -74,7 +74,6 @@ func handleWS() http.Handler {
 					log.Println(err)
 					continue
 				}
-				log.Println(filePath)
 				msg.Content = filePath
 			}
 
@@ -105,7 +104,7 @@ func handleWS() http.Handler {
 			if !ok {
 				continue
 			}
-			receiverConn.WriteJSON(msg)
+			receiverConn.WriteJSON(message)
 		}
 	})
 }
