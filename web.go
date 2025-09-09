@@ -19,6 +19,10 @@ func CreateMux() *http.ServeMux {
 	fs := http.FileServer(http.Dir("assets"))
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		templates.ExecuteTemplate(w, "index.html", nil)
 	})
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
