@@ -19,11 +19,17 @@ func CreateMux() *http.ServeMux {
 	fs := http.FileServer(http.Dir("assets"))
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
+		if r.URL.Path == "/" {
+			templates.ExecuteTemplate(w, "index.html", nil)
 			return
 		}
-		templates.ExecuteTemplate(w, "index.html", nil)
+		if strings.HasSuffix(r.URL.Path, "/") {
+			splitResult := strings.Split(r.URL.Path, "")
+			newPath := strings.Join(splitResult[:len(splitResult)-1], "")
+			http.Redirect(w, r, newPath, http.StatusSeeOther)
+			return
+		}
+		http.NotFound(w, r)
 	})
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
 	mux.Handle("/users", AuthMiddleware(handlerUsers()))
