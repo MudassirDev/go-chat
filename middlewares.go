@@ -13,23 +13,20 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		cookie, err := r.Cookie(AUTH_KEY)
 		if err != nil {
 			log.Printf("cookie error: %v", err)
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("auth cookie not found"))
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
 		id, err := auth.VerifyJWT(JWT_SECRET, cookie.Value)
 		if err != nil {
 			log.Printf("failed to verify jwt %v", err)
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("invalid jwt token"))
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 		user, err := DB.GetUserWithID(context.Background(), id)
 		if err != nil {
 			log.Printf("cookie error: %v", err)
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("user doesn't exist"))
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 		ctx := context.WithValue(r.Context(), AUTH_KEY, user)
