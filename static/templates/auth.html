@@ -1,0 +1,32 @@
+{{define "auth"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ if .AuthType }}Login{{else}}Register{{end}}</title>
+    <link rel="stylesheet" href="/assets/css/index.css">
+    <link rel="stylesheet" href="/assets/css/auth.css">
+  </head>
+  <body>
+
+    {{if .AuthType}}
+    <form action="/api/users/login">
+      <input type="text" name="username" placeholder="Username">
+      <input type="password" name="password" placeholder="Password">
+      <button type="submit">Login</button>
+    </form>
+    {{else}}
+    <form action="/api/users/create">
+      <input type="text" name="username" placeholder="Username">
+      <input type="password" name="password" placeholder="Password">
+      <input type="password" name="confirm-password" placeholder="Confirm Password">
+      <button type="submit">Login</button>
+    </form>
+    {{end}}
+
+    <script src=""></script>
+
+  </body>
+</html>
+{{end}}

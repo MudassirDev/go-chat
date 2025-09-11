@@ -3,9 +3,13 @@ package main
 import "net/http"
 
 func handleLoginTemplate(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "login", nil)
+	templates.ExecuteTemplate(w, "auth", struct {
+		AuthType bool
+	}{
+		AuthType: true,
+	})
 }
 
 func handleRegisterTemplate(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "register", nil)
+	templates.ExecuteTemplate(w, "auth", nil)
 }
