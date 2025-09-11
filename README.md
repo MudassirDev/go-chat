@@ -105,7 +105,7 @@ go build -o securechat
 
 ## License
 
-MIT License
+TBD
 
 ## Contributing
 
