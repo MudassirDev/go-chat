@@ -39,6 +39,8 @@ func CreateMux() *http.ServeMux {
 	mux.Handle("/chat/{userid}", AuthMiddleware(handleWS()))
 	mux.HandleFunc("POST /api/users/create", handleCreateUsers)
 	mux.HandleFunc("POST /api/users/login", handleLogin)
+	mux.HandleFunc("GET /login", handleLoginTemplate)
+	mux.HandleFunc("GET /register", handleRegisterTemplate)
 
 	return mux
 }
