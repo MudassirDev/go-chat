@@ -149,26 +149,21 @@ func handlerChat() http.Handler {
 			SenderID_2:    recipient.ID,
 			RecipientID_2: user.ID,
 		})
+		type Response struct {
+			Recipient database.GetUserWithIDRow `json:"recipient"`
+			Messages  []database.Message        `json:"messages"`
+		}
 		if err != nil {
 			log.Println(err)
-			templates.ExecuteTemplate(w, "chat", struct {
-				Recipient database.GetUserWithIDRow `json:"recipient"`
-				Messages  []database.Message        `json:"messages"`
-			}{
+			respondWithJSON(w, http.StatusOK, Response{
 				Recipient: recipient,
 			})
 			return
 		}
-		err = templates.ExecuteTemplate(w, "chat", struct {
-			Recipient database.GetUserWithIDRow `json:"recipient"`
-			Messages  []database.Message        `json:"messages"`
-		}{
+		respondWithJSON(w, http.StatusOK, Response{
 			Recipient: recipient,
 			Messages:  messages,
 		})
-		if err != nil {
-			log.Println(err)
-		}
 	})
 }
 
