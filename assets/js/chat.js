@@ -8,10 +8,7 @@ class ChatBox {
 
     // recipientID
     const rawId = location.href.split("/").at(-1);
-    this.recipientId = parseInt(rawId);
-    if (this.recipientId == NaN) {
-      throw new Error("invalid recipientId");
-    }
+    this.recipientId = rawId;
 
     // connection data
     this.connection = new WebSocket(`/chat/${this.recipientId}`);
