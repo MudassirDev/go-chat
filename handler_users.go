@@ -133,6 +133,10 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func handlerUsers() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "users/") {
+			http.NotFound(w, r)
+			return
+		}
 		rawUser := r.Context().Value(AUTH_KEY)
 		if rawUser == nil {
 			w.WriteHeader(http.StatusUnauthorized)

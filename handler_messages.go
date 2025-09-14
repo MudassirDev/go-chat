@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/MudassirDev/go-chat/db/database"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -17,14 +17,14 @@ const (
 	AUDIO_MESSAGE string = "AUDIO"
 )
 
-var connections map[int64]*websocket.Conn = make(map[int64]*websocket.Conn)
+var connections map[uuid.UUID]*websocket.Conn = make(map[uuid.UUID]*websocket.Conn)
 var upgrader websocket.Upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
 type Message struct {
-	Recipient   int64     `json:"recipient_id"`
+	Recipient   uuid.UUID `json:"recipient_id"`
 	MessageType string    `json:"message_type"`
 	Content     string    `json:"content,omitempty"`
 	ContentData []byte    `json:"content_data,omitempty"`
@@ -126,28 +126,26 @@ func handlerChat() http.Handler {
 			return
 		}
 		raw_recipient_id := r.PathValue("userid")
-		recipient_id, err := strconv.Atoi(raw_recipient_id)
+		recipient_id, err := uuid.Parse(raw_recipient_id)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("failed to check id"))
 			return
 		}
-		if user.ID == int64(recipient_id) {
+		if user.ID == recipient_id {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("cannot initiate a chat with yourself"))
 			return
 		}
-		recipient, err := DB.GetUserWithID(context.Background(), int64(recipient_id))
+		recipient, err := DB.GetUserWithID(context.Background(), recipient_id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("no such user!"))
 			return
 		}
 		messages, err := DB.GetChatMessages(context.Background(), database.GetChatMessagesParams{
-			RecipientID:   recipient.ID,
-			SenderID:      user.ID,
-			SenderID_2:    recipient.ID,
-			RecipientID_2: user.ID,
+			RecipientID: recipient.ID,
+			SenderID:    user.ID,
 		})
 		type Response struct {
 			Recipient database.GetUserWithIDRow `json:"recipient"`
@@ -188,7 +186,6 @@ func handleFiles() http.Handler {
 		_, err := DB.GetMessageWithFileName(context.Background(), database.GetMessageWithFileNameParams{
 			Content:     filepath,
 			RecipientID: user.ID,
-			SenderID:    user.ID,
 		})
 
 		if err != nil {

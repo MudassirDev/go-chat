@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"embed"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,7 +10,7 @@ import (
 
 	"github.com/MudassirDev/go-chat/db/database"
 	"github.com/joho/godotenv"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )
 
@@ -25,7 +24,6 @@ var (
 )
 
 const (
-	DB_PATH     string        = "app.db"
 	EXPIRY_TIME time.Duration = time.Hour * 1
 	AUTH_KEY    string        = "auth_key"
 )
@@ -43,11 +41,14 @@ func init() {
 	validateEnv(jwtSecret, "JWT_SECRET")
 	JWT_SECRET = jwtSecret
 
+	dbURL := os.Getenv("DB_URL")
+	validateEnv(dbURL, "DB_URL")
+
 	log.Println("env variables loaded")
 
 	log.Println("making a connection with DB")
 
-	conn, err := sql.Open("sqlite3", fmt.Sprintf("file:%v?_foreign_keys=on", DB_PATH))
+	conn, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("failed to make a connection with DB: %v", err)
 	}
@@ -66,7 +67,7 @@ func init() {
 func init() {
 	log.Println("running migrations")
 
-	goose.SetDialect("sqlite3")
+	goose.SetDialect("postgres")
 	goose.SetBaseFS(embedMigrations)
 
 	if err := goose.Up(DB_CONN, "db/schema"); err != nil {
