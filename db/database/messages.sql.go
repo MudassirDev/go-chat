@@ -8,20 +8,22 @@ package database
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const createMessage = `-- name: CreateMessage :one
 INSERT INTO messages (
   sender_id, recipient_id, time, content, message_type, created_at, updated_at
 ) VALUES (
-  ?, ?, ?, ?, ?, ?, ?
+  $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING id, sender_id, recipient_id, time, content, message_type, created_at, updated_at
 `
 
 type CreateMessageParams struct {
-	SenderID    int64
-	RecipientID int64
+	SenderID    uuid.UUID
+	RecipientID uuid.UUID
 	Time        time.Time
 	Content     string
 	MessageType string
@@ -54,23 +56,16 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 }
 
 const getChatMessages = `-- name: GetChatMessages :many
-SELECT id, sender_id, recipient_id, time, content, message_type, created_at, updated_at FROM messages WHERE (recipient_id = ? AND sender_id = ?) OR (sender_id = ? AND recipient_id = ?) ORDER BY time ASC
+SELECT id, sender_id, recipient_id, time, content, message_type, created_at, updated_at FROM messages WHERE (recipient_id = $1 AND sender_id = $2) OR (sender_id = $1 AND recipient_id = $2) ORDER BY time ASC
 `
 
 type GetChatMessagesParams struct {
-	RecipientID   int64
-	SenderID      int64
-	SenderID_2    int64
-	RecipientID_2 int64
+	RecipientID uuid.UUID
+	SenderID    uuid.UUID
 }
 
 func (q *Queries) GetChatMessages(ctx context.Context, arg GetChatMessagesParams) ([]Message, error) {
-	rows, err := q.db.QueryContext(ctx, getChatMessages,
-		arg.RecipientID,
-		arg.SenderID,
-		arg.SenderID_2,
-		arg.RecipientID_2,
-	)
+	rows, err := q.db.QueryContext(ctx, getChatMessages, arg.RecipientID, arg.SenderID)
 	if err != nil {
 		return nil, err
 	}
@@ -102,17 +97,16 @@ func (q *Queries) GetChatMessages(ctx context.Context, arg GetChatMessagesParams
 }
 
 const getMessageWithFileName = `-- name: GetMessageWithFileName :one
-SELECT id, sender_id, recipient_id, time, content, message_type, created_at, updated_at FROM messages WHERE content = ? AND (recipient_id = ? OR sender_id = ?)
+SELECT id, sender_id, recipient_id, time, content, message_type, created_at, updated_at FROM messages WHERE content = $1 AND (recipient_id = $2 OR sender_id = $2)
 `
 
 type GetMessageWithFileNameParams struct {
 	Content     string
-	RecipientID int64
-	SenderID    int64
+	RecipientID uuid.UUID
 }
 
 func (q *Queries) GetMessageWithFileName(ctx context.Context, arg GetMessageWithFileNameParams) (Message, error) {
-	row := q.db.QueryRowContext(ctx, getMessageWithFileName, arg.Content, arg.RecipientID, arg.SenderID)
+	row := q.db.QueryRowContext(ctx, getMessageWithFileName, arg.Content, arg.RecipientID)
 	var i Message
 	err := row.Scan(
 		&i.ID,

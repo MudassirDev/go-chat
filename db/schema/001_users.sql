@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,

@@ -8,13 +8,15 @@ package database
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   username, password, created_at, updated_at
 ) VALUES (
-  ?, ?, ?, ?
+  $1, $2, $3, $4
 )
 RETURNING id, username, created_at, updated_at
 `
@@ -27,7 +29,7 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID        int64
+	ID        uuid.UUID
 	Username  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -51,17 +53,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getAllUsersExceptCurrent = `-- name: GetAllUsersExceptCurrent :many
-SELECT id, username, created_at, updated_at FROM users WHERE id != ?
+SELECT id, username, created_at, updated_at FROM users WHERE id != $1
 `
 
 type GetAllUsersExceptCurrentRow struct {
-	ID        int64
+	ID        uuid.UUID
 	Username  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id int64) ([]GetAllUsersExceptCurrentRow, error) {
+func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id uuid.UUID) ([]GetAllUsersExceptCurrentRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAllUsersExceptCurrent, id)
 	if err != nil {
 		return nil, err
@@ -90,17 +92,17 @@ func (q *Queries) GetAllUsersExceptCurrent(ctx context.Context, id int64) ([]Get
 }
 
 const getUserWithID = `-- name: GetUserWithID :one
-SELECT id, username, created_at, updated_at FROM users WHERE id = ?
+SELECT id, username, created_at, updated_at FROM users WHERE id = $1
 `
 
 type GetUserWithIDRow struct {
-	ID        int64
+	ID        uuid.UUID
 	Username  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-func (q *Queries) GetUserWithID(ctx context.Context, id int64) (GetUserWithIDRow, error) {
+func (q *Queries) GetUserWithID(ctx context.Context, id uuid.UUID) (GetUserWithIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserWithID, id)
 	var i GetUserWithIDRow
 	err := row.Scan(
@@ -113,7 +115,7 @@ func (q *Queries) GetUserWithID(ctx context.Context, id int64) (GetUserWithIDRow
 }
 
 const getUserWithUsername = `-- name: GetUserWithUsername :one
-SELECT id, username, password, created_at, updated_at FROM users WHERE username = ?
+SELECT id, username, password, created_at, updated_at FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserWithUsername(ctx context.Context, username string) (User, error) {

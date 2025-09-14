@@ -1,8 +1,8 @@
 -- +goose Up
 CREATE TABLE messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-  sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   time TIMESTAMP NOT NULL,
   content TEXT NOT NULL,
   message_type TEXT NOT NULL CHECK(message_type = 'TEXT' OR message_type = 'AUDIO'),

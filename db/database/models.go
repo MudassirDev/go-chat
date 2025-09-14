@@ -6,12 +6,14 @@ package database
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Message struct {
-	ID          int64
-	SenderID    int64
-	RecipientID int64
+	ID          uuid.UUID
+	SenderID    uuid.UUID
+	RecipientID uuid.UUID
 	Time        time.Time
 	Content     string
 	MessageType string
@@ -20,7 +22,7 @@ type Message struct {
 }
 
 type User struct {
-	ID        int64
+	ID        uuid.UUID
 	Username  string
 	Password  string
 	CreatedAt time.Time
