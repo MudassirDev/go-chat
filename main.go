@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/MudassirDev/go-chat/db/database"
+	"github.com/MudassirDev/go-chat/internal/web"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
@@ -19,13 +19,7 @@ var (
 	DB_CONN *sql.DB
 	//go:embed db/schema/*.sql
 	embedMigrations embed.FS
-	DB              *database.Queries
-	JWT_SECRET      string
-)
-
-const (
-	EXPIRY_TIME time.Duration = time.Hour * 1
-	AUTH_KEY    string        = "auth_key"
+	HANDLER         *http.ServeMux
 )
 
 func init() {
@@ -39,7 +33,6 @@ func init() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	validateEnv(jwtSecret, "JWT_SECRET")
-	JWT_SECRET = jwtSecret
 
 	dbURL := os.Getenv("DB_URL")
 	validateEnv(dbURL, "DB_URL")
@@ -56,12 +49,9 @@ func init() {
 
 	log.Println("DB connection formed!")
 
-	log.Println("creating new DB Queries")
-
 	queries := database.New(conn)
-	DB = queries
-
-	log.Println("new DB Query created!")
+	handler := web.CreateMux(jwtSecret, queries)
+	HANDLER = handler
 }
 
 func init() {
@@ -79,11 +69,10 @@ func init() {
 
 func main() {
 	defer DB_CONN.Close()
-	mux := CreateMux()
 
 	srv := http.Server{
 		Addr:    ":" + PORT,
-		Handler: mux,
+		Handler: HANDLER,
 	}
 
 	log.Printf("Server is listerning at http://localhost:%v\n", PORT)
