@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/MudassirDev/go-chat/internal/auth"
 )
 
-func AuthMiddleware(next http.Handler) http.Handler {
+func (c *apiConfig) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(AUTH_KEY)
 		if err != nil {
@@ -17,13 +17,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		id, err := auth.VerifyJWT(JWT_SECRET, cookie.Value)
+		id, err := auth.VerifyJWT(c.jwtSecret, cookie.Value)
 		if err != nil {
 			log.Printf("failed to verify jwt %v", err)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		user, err := DB.GetUserWithID(context.Background(), id)
+		user, err := c.db.GetUserWithID(context.Background(), id)
 		if err != nil {
 			log.Printf("cookie error: %v", err)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)

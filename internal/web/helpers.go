@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"fmt"
@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
-func SaveAudio(data []byte) (string, error) {
+func (c *apiConfig) saveAudio(data []byte) (string, error) {
 	id := uuid.New().String()
 	fileName := fmt.Sprintf("%v.webm", id)
-	filepath := path.Join("files", fileName)
+	filepath := path.Join(c.cwd, "files", fileName)
 
 	if err := os.MkdirAll("files", 0755); err != nil {
 		return "", err

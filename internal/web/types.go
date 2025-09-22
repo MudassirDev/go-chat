@@ -9,5 +9,6 @@ import (
 type apiConfig struct {
 	db        *database.Queries
 	jwtSecret string
+	cwd       string
 	templates *template.Template
 }

@@ -6,27 +6,27 @@ import (
 	"net/http"
 )
 
-func respondWithError(w http.ResponseWriter, err error, msg string, code int) {
-	log.Printf("error: %v", err)
+func respondWithError(w http.ResponseWriter, statusCode int, message string, err error) {
+	log.Printf("error while processing request %v\n", err)
 
-	data := struct {
+	payload := struct {
 		Message string `json:"message"`
 	}{
-		Message: msg,
+		Message: message,
 	}
-
-	respondWithJson(w, code, data)
+	respondWithJSON(w, statusCode, payload)
 }
 
-func respondWithJson(w http.ResponseWriter, code int, payload any) {
+func respondWithJSON(w http.ResponseWriter, statusCode int, payload any) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("failed to encode response: %v", err)
+		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to send data"))
+		w.Write([]byte("Internal Server Error"))
 		return
 	}
 
-	w.WriteHeader(code)
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
 	w.Write(data)
 }

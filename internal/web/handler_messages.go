@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -31,7 +31,7 @@ type Message struct {
 	Time        time.Time `json:"time"`
 }
 
-func handleWS() http.Handler {
+func (c *apiConfig) handleWS() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rawUser := r.Context().Value(AUTH_KEY)
 		if rawUser == nil {
@@ -69,7 +69,7 @@ func handleWS() http.Handler {
 				continue
 			}
 			if msg.MessageType == AUDIO_MESSAGE {
-				filePath, err := SaveAudio(msg.ContentData)
+				filePath, err := c.saveAudio(msg.ContentData)
 				if err != nil {
 					log.Println(err)
 					continue
@@ -77,7 +77,7 @@ func handleWS() http.Handler {
 				msg.Content = filePath
 			}
 
-			message, err := DB.CreateMessage(context.Background(), database.CreateMessageParams{
+			message, err := c.db.CreateMessage(context.Background(), database.CreateMessageParams{
 				SenderID:    user.ID,
 				RecipientID: msg.Recipient,
 				Time:        msg.Time,
@@ -109,7 +109,7 @@ func handleWS() http.Handler {
 	})
 }
 
-func handlerChat() http.Handler {
+func (c *apiConfig) handlerChat() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rawUser := r.Context().Value(AUTH_KEY)
 		if rawUser == nil {
@@ -137,13 +137,13 @@ func handlerChat() http.Handler {
 			w.Write([]byte("cannot initiate a chat with yourself"))
 			return
 		}
-		recipient, err := DB.GetUserWithID(context.Background(), recipient_id)
+		recipient, err := c.db.GetUserWithID(context.Background(), recipient_id)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("no such user!"))
 			return
 		}
-		messages, err := DB.GetChatMessages(context.Background(), database.GetChatMessagesParams{
+		messages, err := c.db.GetChatMessages(context.Background(), database.GetChatMessagesParams{
 			RecipientID: recipient.ID,
 			SenderID:    user.ID,
 		})
@@ -165,7 +165,7 @@ func handlerChat() http.Handler {
 	})
 }
 
-func handleFiles() http.Handler {
+func (c *apiConfig) handleFiles() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rawUser := r.Context().Value(AUTH_KEY)
 		if rawUser == nil {
@@ -183,7 +183,7 @@ func handleFiles() http.Handler {
 		filename := r.PathValue("filename")
 		filepath := path.Join("files", filename)
 
-		_, err := DB.GetMessageWithFileName(context.Background(), database.GetMessageWithFileNameParams{
+		_, err := c.db.GetMessageWithFileName(context.Background(), database.GetMessageWithFileNameParams{
 			Content:     filepath,
 			RecipientID: user.ID,
 		})

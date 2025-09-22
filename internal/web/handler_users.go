@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type Request struct {
 	Password string `json:"password"`
 }
 
-func handleCreateUsers(w http.ResponseWriter, r *http.Request) {
+func (c *apiConfig) handleCreateUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("wrong Content-Type"))
@@ -43,7 +43,7 @@ func handleCreateUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := DB.CreateUser(context.Background(), database.CreateUserParams{
+	user, err := c.db.CreateUser(context.Background(), database.CreateUserParams{
 		Username:  req.Username,
 		Password:  password,
 		CreatedAt: time.Now(),
@@ -74,7 +74,7 @@ func handleCreateUsers(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func handleLogin(w http.ResponseWriter, r *http.Request) {
+func (c *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("wrong Content-Type"))
@@ -92,7 +92,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := DB.GetUserWithUsername(context.Background(), req.Username)
+	user, err := c.db.GetUserWithUsername(context.Background(), req.Username)
 	if err != nil {
 		log.Printf("no user found: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -108,7 +108,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jwtToken, err := auth.CreateJWT(user.ID, JWT_SECRET, EXPIRY_TIME)
+	jwtToken, err := auth.CreateJWT(user.ID, c.jwtSecret, EXPIRY_TIME)
 	if err != nil {
 		log.Printf("failed to create token: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -131,7 +131,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("logged in"))
 }
 
-func handlerUsers() http.Handler {
+func (c *apiConfig) handlerUsers() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(r.URL.Path, "users/") {
 			http.NotFound(w, r)
@@ -149,12 +149,12 @@ func handlerUsers() http.Handler {
 			w.Write([]byte("unauthorized"))
 			return
 		}
-		users, err := DB.GetAllUsersExceptCurrent(context.Background(), user.ID)
+		users, err := c.db.GetAllUsersExceptCurrent(context.Background(), user.ID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("internal server error"))
 			return
 		}
-		templates.ExecuteTemplate(w, "users.html", users)
+		c.templates.ExecuteTemplate(w, "users.html", users)
 	})
 }
