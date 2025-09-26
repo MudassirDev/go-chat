@@ -6,21 +6,38 @@ class ChatBox {
     this.messageForm = document.querySelector("#message-box");
     this.recordBtn = document.querySelector("#record-audio");
 
+    // initializing empty connection
+    this.connection = null;
+
     // recipientID
-    const rawId = location.href.split("/").at(-1);
-    this.recipientId = rawId;
+    this.recipientId = null;
 
     // connection data
-    this.connection = new WebSocket(`/chat/${this.recipientId}`);
     this.messageTypes = {
       TEXT_TYPE: "TEXT",
       AUDIO_TYPE: "AUDIO",
     };
     Object.freeze(this.messageTypes);
+  }
+
+  async initialize(id) {
+    // closing old connections to prevent leak
+    if (this.connection != null) {
+      this.connection.close();
+      this.connection = null;
+    }
+
+    this.recipientId = id;
+    await this.loadMessages();
+    this.connection = new WebSocket(`/chat/${this.recipientId}`);
 
     // recorder
     this.mediaRecorder = null;
     this.audioChunks = [];
+
+    this.connection.onmessage = e => {
+      this.manageMessageHTML(e);
+    };
   }
 
   // sending message to the websocket
@@ -186,18 +203,41 @@ class ChatBox {
       this.handleTextMessage();
     })
 
-    this.connection.onmessage = e => {
-      this.manageMessageHTML(e);
-    };
     this.recordBtn.addEventListener("click", () => {
       this.handleAudioMessage();
     });
   }
+
+  async loadMessages() {
+    try {
+      const response = await fetch(`/users/${this.recipientId}`);
+      if (!response.ok) {
+        throw new Error("failed to load messages")
+      }
+      const data = await response.text();
+      this.chatbox.innerHTML = data;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+}
+
+function handleClickUser(target, chatbox) {
+  document.querySelector("#chatbox").classList.add("active");
+  chatbox.initialize(target.id);
 }
 
 function main() {
+  const allUsers = document.querySelectorAll(".user");
   const chatbox = new ChatBox();
+
   chatbox.addEventListeners();
+
+  allUsers.forEach(user => {
+    user.addEventListener("click", e => {
+      handleClickUser(e.target, chatbox);
+    })
+  })
 }
 
 document.addEventListener("DOMContentLoaded", main);

@@ -1,0 +1,14 @@
+{{define "messages"}}
+{{ $ID := .Recipient.ID }}
+{{if .Messages}}
+{{range .Messages}}
+<div class="message {{if eq $ID .RecipientID}}right{{end}}">
+  {{if eq .MessageType "TEXT" }}
+  <p>{{ .Content }}</p>
+  {{else}}
+  <audio controls="true" src="/{{ .Content }}"></audio>
+  {{end}}
+</div>
+{{end}}
+{{end}}
+{{end}}

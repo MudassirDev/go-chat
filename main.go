@@ -15,11 +15,16 @@ import (
 )
 
 var (
-	PORT    string
-	DB_CONN *sql.DB
+	PORT          string
+	isDevelopment bool = false
+	DB_CONN       *sql.DB
 	//go:embed db/schema/*.sql
 	embedMigrations embed.FS
 	HANDLER         *http.ServeMux
+)
+
+const (
+	DEVELOPMENT_ENV string = "development"
 )
 
 func init() {
@@ -34,8 +39,19 @@ func init() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	validateEnv(jwtSecret, "JWT_SECRET")
 
+	environment := os.Getenv("ENV")
+	validateEnv(environment, "ENV")
+
+	if environment == DEVELOPMENT_ENV {
+		isDevelopment = true
+	}
+
 	dbURL := os.Getenv("DB_URL")
 	validateEnv(dbURL, "DB_URL")
+
+	if isDevelopment {
+		dbURL += "?sslmode=disable"
+	}
 
 	log.Println("env variables loaded")
 
@@ -50,7 +66,7 @@ func init() {
 	log.Println("DB connection formed!")
 
 	queries := database.New(conn)
-	handler := web.CreateMux(jwtSecret, queries)
+	handler := web.CreateMux(jwtSecret, queries, isDevelopment)
 	HANDLER = handler
 }
 

@@ -153,12 +153,12 @@ func (c *apiConfig) handlerChat() http.Handler {
 		}
 		if err != nil {
 			log.Println(err)
-			respondWithJSON(w, http.StatusOK, Response{
+			c.templates.ExecuteTemplate(w, "messages", Response{
 				Recipient: recipient,
 			})
 			return
 		}
-		respondWithJSON(w, http.StatusOK, Response{
+		c.templates.ExecuteTemplate(w, "messages", Response{
 			Recipient: recipient,
 			Messages:  messages,
 		})

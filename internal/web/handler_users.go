@@ -133,10 +133,6 @@ func (c *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (c *apiConfig) handlerUsers() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, "users/") {
-			http.NotFound(w, r)
-			return
-		}
 		rawUser := r.Context().Value(AUTH_KEY)
 		if rawUser == nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -155,6 +151,6 @@ func (c *apiConfig) handlerUsers() http.Handler {
 			w.Write([]byte("internal server error"))
 			return
 		}
-		c.templates.ExecuteTemplate(w, "users.html", users)
+		c.templates.ExecuteTemplate(w, "chat", users)
 	})
 }

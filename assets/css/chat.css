@@ -4,12 +4,14 @@
 
 #details {
   flex: 0.2;
+  border: 2px solid white;
+  height: 100vh;
 }
 
 #chatbox {
   /* width: 90%; */
   height: 100vh;
-  display: flex;
+  display: none;
   flex-direction: column;
   position: relative;
   border: 2px solid;
@@ -18,6 +20,11 @@
   gap: 10px;
   flex: 1;
 }
+
+#chatbox.active {
+  display: flex;
+}
+
 #chatbox .main {
   flex: 1;
 }
@@ -72,4 +79,14 @@
 
 #chatbox .main .message.right {
   text-align: right;
+}
+
+#details .user {
+  padding: 20px;
+  font-size: 15px;
+  box-shadow: 0px 0px 10px white;
+}
+
+#details .user.Gctive {
+  border: 2px solid white;
 }

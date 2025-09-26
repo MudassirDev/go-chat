@@ -10,25 +10,16 @@
   </head>
   <body>
 
-    {{ $ID := .Recipient.ID }}
     <div id="chat">
       <div id="details">
-        <button>Go Back</button>
-        <p>{{ .Recipient.Username }}</p>
+        {{range .}}
+        <div id="{{.ID}}" class="user">
+          {{.Username}}
+        </div>
+        {{end}}
       </div>
       <div id="chatbox">
         <div class="main">
-          {{if .Messages}}
-          {{range .Messages}}
-          <div class="message {{if eq $ID .RecipientID}}right{{end}}">
-            {{if eq .MessageType "TEXT" }}
-            <p>{{ .Content }}</p>
-            {{else}}
-            <audio controls="true" src="/{{ .Content }}"></audio>
-            {{end}}
-          </div>
-          {{end}}
-          {{end}}
         </div>
         <div class="message-box">
           <form id="message-box">

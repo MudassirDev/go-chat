@@ -19,7 +19,12 @@ const (
 	AUTH_KEY    string        = "auth_key"
 )
 
-func CreateMux(jwtSecret string, DB *database.Queries) *http.ServeMux {
+var (
+	IS_DEVELOPMENT bool
+)
+
+func CreateMux(jwtSecret string, DB *database.Queries, isDevelopment bool) *http.ServeMux {
+	IS_DEVELOPMENT = isDevelopment
 	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir("assets"))
 
@@ -51,7 +56,7 @@ func CreateMux(jwtSecret string, DB *database.Queries) *http.ServeMux {
 		http.NotFound(w, r)
 	})
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
-	mux.Handle("/users", apiCfg.AuthMiddleware(apiCfg.handlerUsers()))
+	mux.Handle("GET /chat", apiCfg.AuthMiddleware(apiCfg.handlerUsers()))
 	mux.Handle("GET /users/{userid}", apiCfg.AuthMiddleware(apiCfg.handlerChat()))
 	mux.Handle("GET /files/{filename}", apiCfg.AuthMiddleware(apiCfg.handleFiles()))
 
