@@ -60,7 +60,7 @@ func CreateMux(jwtSecret string, DB *database.Queries, isDevelopment bool) *http
 	mux.Handle("GET /users/{userid}", apiCfg.AuthMiddleware(apiCfg.handlerChat()))
 	mux.Handle("GET /files/{filename}", apiCfg.AuthMiddleware(apiCfg.handleFiles()))
 
-	mux.Handle("/chat/{userid}", apiCfg.AuthMiddleware(apiCfg.handleWS()))
+	mux.Handle("/chat/ws", apiCfg.AuthMiddleware(apiCfg.handleWS()))
 	mux.HandleFunc("POST /api/users/create", apiCfg.handleCreateUsers)
 	mux.HandleFunc("POST /api/users/login", apiCfg.handleLogin)
 	mux.HandleFunc("GET /login", apiCfg.handleLoginTemplate)

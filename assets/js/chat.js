@@ -5,9 +5,13 @@ class ChatBox {
     this.chatbox = document.querySelector("#chatbox .main");
     this.messageForm = document.querySelector("#message-box");
     this.recordBtn = document.querySelector("#record-audio");
+    this.notification = document.querySelector("#notification");
+
+    // current user id
+    this.senderID = document.querySelector("#sender-id").getAttribute("senderID");
 
     // initializing empty connection
-    this.connection = null;
+    this.connection = new WebSocket(`/chat/ws`);
 
     // recipientID
     this.recipientId = null;
@@ -18,26 +22,15 @@ class ChatBox {
       AUDIO_TYPE: "AUDIO",
     };
     Object.freeze(this.messageTypes);
+
+    // audio
+    this.mediaRecorder = null;
+    this.audioChunks = [];
   }
 
   async initialize(id) {
-    // closing old connections to prevent leak
-    if (this.connection != null) {
-      this.connection.close();
-      this.connection = null;
-    }
-
     this.recipientId = id;
     await this.loadMessages();
-    this.connection = new WebSocket(`/chat/${this.recipientId}`);
-
-    // recorder
-    this.mediaRecorder = null;
-    this.audioChunks = [];
-
-    this.connection.onmessage = e => {
-      this.manageMessageHTML(e);
-    };
   }
 
   // sending message to the websocket
@@ -156,6 +149,11 @@ class ChatBox {
     const rawData = e.data;
     const data = JSON.parse(rawData);
 
+    if (data.SenderID != this.recipientId && data.SenderID != this.senderID) {
+      console.log("returning");
+      return
+    }
+
     if (data.MessageType == this.messageTypes.TEXT_TYPE) {
       const message = this.createTextMessage(data);
       this.chatbox.append(message);
@@ -206,6 +204,11 @@ class ChatBox {
     this.recordBtn.addEventListener("click", () => {
       this.handleAudioMessage();
     });
+
+    this.connection.onmessage = e => {
+      this.notification.play();
+      this.manageMessageHTML(e);
+    };
   }
 
   async loadMessages() {
@@ -223,8 +226,13 @@ class ChatBox {
 }
 
 function handleClickUser(target, chatbox) {
+  const active = document.querySelector(".user.active")
+  if (active) {
+    active.classList.remove("active");
+  }
   document.querySelector("#chatbox").classList.add("active");
   chatbox.initialize(target.id);
+  document.getElementById(`${target.id}`).classList.add("active");
 }
 
 function main() {

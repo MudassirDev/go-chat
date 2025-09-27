@@ -10,9 +10,11 @@
   </head>
   <body>
 
+    <p id="sender-id" senderID="{{.SenderID}}" style="display: none;"></p>
     <div id="chat">
       <div id="details">
-        {{range .}}
+        <a href="/">Go Back</a>
+        {{range .Users}}
         <div id="{{.ID}}" class="user">
           {{.Username}}
         </div>
@@ -40,6 +42,7 @@
       </div>
     </div>
 
+    <audio id="notification" src="/assets/bell.oga" style="display: none;"></audio>
     <script src="/assets/js/chat.js"></script>
 
   </body>

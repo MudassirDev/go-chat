@@ -10,6 +10,7 @@ import (
 
 	"github.com/MudassirDev/go-chat/db/database"
 	"github.com/MudassirDev/go-chat/internal/auth"
+	"github.com/google/uuid"
 )
 
 type Request struct {
@@ -151,6 +152,12 @@ func (c *apiConfig) handlerUsers() http.Handler {
 			w.Write([]byte("internal server error"))
 			return
 		}
-		c.templates.ExecuteTemplate(w, "chat", users)
+		c.templates.ExecuteTemplate(w, "chat", struct {
+			Users    []database.GetAllUsersExceptCurrentRow
+			SenderID uuid.UUID
+		}{
+			Users:    users,
+			SenderID: user.ID,
+		})
 	})
 }
