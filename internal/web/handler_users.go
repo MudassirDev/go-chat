@@ -155,9 +155,11 @@ func (c *apiConfig) handlerUsers() http.Handler {
 		c.templates.ExecuteTemplate(w, "chat", struct {
 			Users    []database.GetAllUsersExceptCurrentRow
 			SenderID uuid.UUID
+			Username string
 		}{
 			Users:    users,
 			SenderID: user.ID,
+			Username: user.Username,
 		})
 	})
 }
