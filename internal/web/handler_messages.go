@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"path"
@@ -31,33 +32,23 @@ type Message struct {
 	Time        time.Time `json:"time"`
 }
 
-func (c *apiConfig) handleWS() http.Handler {
+func (c *APIConfig) handlerWS() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rawUser := r.Context().Value(AUTH_KEY)
-		if rawUser == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
-			return
-		}
-		user, ok := rawUser.(database.GetUserWithIDRow)
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
+		user, err := getUserFromContext(r)
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, "unauthorized", err)
 			return
 		}
 
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Printf("failed to make a connection %v\n", err)
-			w.Write([]byte("failed"))
+			respondWithError(w, http.StatusInternalServerError, "failed to create a connection", err)
 			return
 		}
 
 		var msg Message
 		connections[user.ID] = conn
 		defer conn.Close()
-		log.Println(connections)
-
 		for {
 			err := conn.ReadJSON(&msg)
 			if err != nil {
@@ -65,6 +56,7 @@ func (c *apiConfig) handleWS() http.Handler {
 				delete(connections, user.ID)
 				return
 			}
+
 			if msg.MessageType != AUDIO_MESSAGE && msg.MessageType != TEXT_MESSAGE {
 				continue
 			}
@@ -74,10 +66,11 @@ func (c *apiConfig) handleWS() http.Handler {
 					log.Println(err)
 					continue
 				}
+
 				msg.Content = filePath
 			}
 
-			message, err := c.db.CreateMessage(context.Background(), database.CreateMessageParams{
+			message, err := c.DB.CreateMessage(context.Background(), database.CreateMessageParams{
 				SenderID:    user.ID,
 				RecipientID: msg.Recipient,
 				Time:        msg.Time,
@@ -95,6 +88,7 @@ func (c *apiConfig) handleWS() http.Handler {
 				log.Println(err)
 				return
 			}
+
 			err = conn.WriteJSON(message)
 			if err != nil {
 				log.Printf("error while writing: %v", err)
@@ -104,86 +98,78 @@ func (c *apiConfig) handleWS() http.Handler {
 			if !ok {
 				continue
 			}
+
 			receiverConn.WriteJSON(message)
 		}
 	})
 }
 
-func (c *apiConfig) handlerChat() http.Handler {
+func (c *APIConfig) handlerMessagesTemplate() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rawUser := r.Context().Value(AUTH_KEY)
-		if rawUser == nil {
-			log.Println("no user in the request context")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
-			return
-		}
-		user, ok := rawUser.(database.GetUserWithIDRow)
-		if !ok {
-			log.Println("user is not valid")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
-			return
-		}
-		raw_recipient_id := r.PathValue("userid")
-		recipient_id, err := uuid.Parse(raw_recipient_id)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("failed to check id"))
-			return
-		}
-		if user.ID == recipient_id {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("cannot initiate a chat with yourself"))
-			return
-		}
-		recipient, err := c.db.GetUserWithID(context.Background(), recipient_id)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("no such user!"))
-			return
-		}
-		messages, err := c.db.GetChatMessages(context.Background(), database.GetChatMessagesParams{
-			RecipientID: recipient.ID,
-			SenderID:    user.ID,
-		})
 		type Response struct {
 			Recipient database.GetUserWithIDRow `json:"recipient"`
 			Messages  []database.Message        `json:"messages"`
 		}
+
+		user, err := getUserFromContext(r)
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, "unauthorized", err)
+			return
+		}
+
+		raw_recipient_id := r.PathValue("userid")
+		recipient_id, err := uuid.Parse(raw_recipient_id)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "invalid id", err)
+			return
+		}
+
+		if user.ID == recipient_id {
+			msg := "cannot initiate chat with yourself"
+			respondWithError(
+				w,
+				http.StatusBadRequest,
+				msg,
+				errors.New(msg),
+			)
+			return
+		}
+
+		recipient, err := c.DB.GetUserWithID(context.Background(), recipient_id)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "no such user", err)
+			return
+		}
+
+		messages, err := c.DB.GetChatMessages(context.Background(), database.GetChatMessagesParams{
+			RecipientID: recipient.ID,
+			SenderID:    user.ID,
+		})
 		if err != nil {
 			log.Println(err)
-			c.templates.ExecuteTemplate(w, "messages", Response{
+			c.Templates.ExecuteTemplate(w, "messages", Response{
 				Recipient: recipient,
 			})
 			return
 		}
-		c.templates.ExecuteTemplate(w, "messages", Response{
+		c.Templates.ExecuteTemplate(w, "messages", Response{
 			Recipient: recipient,
 			Messages:  messages,
 		})
 	})
 }
 
-func (c *apiConfig) handleFiles() http.Handler {
+func (c *APIConfig) handlerFiles() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rawUser := r.Context().Value(AUTH_KEY)
-		if rawUser == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
-			return
-		}
-		user, ok := rawUser.(database.GetUserWithIDRow)
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
+		user, err := getUserFromContext(r)
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, "unauthorized", err)
 			return
 		}
 
 		filename := r.PathValue("filename")
 		filepath := path.Join("files", filename)
-
-		_, err := c.db.GetMessageWithFileName(context.Background(), database.GetMessageWithFileNameParams{
+		_, err = c.DB.GetMessageWithFileName(context.Background(), database.GetMessageWithFileNameParams{
 			Content:     filepath,
 			RecipientID: user.ID,
 		})

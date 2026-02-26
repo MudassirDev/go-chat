@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"text/template"
 
 	"github.com/MudassirDev/go-chat/db/database"
 	"github.com/MudassirDev/go-chat/internal/web"
@@ -15,77 +16,54 @@ import (
 )
 
 var (
-	PORT          string
-	isDevelopment bool = false
-	DB_CONN       *sql.DB
+	PORT    string
+	DB_CONN *sql.DB
+	HANDLER *http.ServeMux
 	//go:embed db/schema/*.sql
 	embedMigrations embed.FS
-	HANDLER         *http.ServeMux
-)
-
-const (
-	DEVELOPMENT_ENV string = "development"
 )
 
 func init() {
 	godotenv.Load()
-
-	log.Println("loading env variables")
-
-	port := os.Getenv("PORT")
-	validateEnv(port, "PORT")
-	PORT = port
-
-	jwtSecret := os.Getenv("JWT_SECRET")
-	validateEnv(jwtSecret, "JWT_SECRET")
-
-	environment := os.Getenv("ENV")
-	validateEnv(environment, "ENV")
-
-	if environment == DEVELOPMENT_ENV {
-		isDevelopment = true
+	envs := map[string]string{
+		"PORT":       "",
+		"JWT_SECRET": "",
+		"DB_URL":     "",
 	}
 
-	dbURL := os.Getenv("DB_URL")
-	validateEnv(dbURL, "DB_URL")
-
-	if isDevelopment {
-		dbURL += "?sslmode=disable"
+	for env := range envs {
+		envs[env] = os.Getenv(env)
+		validateEnv(envs[env], env)
 	}
 
-	log.Println("env variables loaded")
-
-	log.Println("making a connection with DB")
-
-	conn, err := sql.Open("postgres", dbURL)
+	conn, err := sql.Open("postgres", envs["DB_URL"])
 	if err != nil {
 		log.Fatalf("failed to make a connection with DB: %v", err)
 	}
-	DB_CONN = conn
 
-	log.Println("DB connection formed!")
-
+	tmpls := template.New("")
 	queries := database.New(conn)
-	handler := web.CreateMux(jwtSecret, queries, isDevelopment)
-	HANDLER = handler
+	apiCfg := web.APIConfig{
+		DB:        queries,
+		JwtSecret: envs["JWT_SECRET"],
+		Templates: tmpls,
+	}
+
+	DB_CONN = conn
+	PORT = envs["PORT"]
+	HANDLER = web.CreateMux(&apiCfg)
 }
 
 func init() {
-	log.Println("running migrations")
-
 	goose.SetDialect("postgres")
 	goose.SetBaseFS(embedMigrations)
-
 	if err := goose.Up(DB_CONN, "db/schema"); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
-
-	log.Println("migrations ran successfully")
 }
 
 func main() {
 	defer DB_CONN.Close()
-
 	srv := http.Server{
 		Addr:    ":" + PORT,
 		Handler: HANDLER,

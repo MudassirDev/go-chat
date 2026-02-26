@@ -7,14 +7,12 @@ import (
 )
 
 func respondWithError(w http.ResponseWriter, statusCode int, message string, err error) {
-	log.Printf("error while processing request %v\n", err)
+	log.Println("error: ", err)
 
-	payload := struct {
-		Message string `json:"message"`
-	}{
-		Message: message,
+	type Error struct {
+		ErrorMessage string `json:"error"`
 	}
-	respondWithJSON(w, statusCode, payload)
+	respondWithJSON(w, statusCode, Error{ErrorMessage: message})
 }
 
 func respondWithJSON(w http.ResponseWriter, statusCode int, payload any) {

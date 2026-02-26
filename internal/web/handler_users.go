@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -18,141 +17,97 @@ type Request struct {
 	Password string `json:"password"`
 }
 
-func (c *apiConfig) handleCreateUsers(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("wrong Content-Type"))
-		return
-	}
-
-	var req Request
-	decoder := json.NewDecoder(r.Body)
-	defer r.Body.Close()
-
-	if err := decoder.Decode(&req); err != nil {
-		log.Printf("failed to decode res: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to decode"))
-		return
-	}
-
-	password, err := auth.HashPassword(req.Password)
-	if err != nil {
-		log.Printf("failed to hash the password: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to hash password!"))
-		return
-	}
-
-	user, err := c.db.CreateUser(context.Background(), database.CreateUserParams{
-		Username:  req.Username,
-		Password:  password,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	})
-
-	if err != nil {
-		log.Printf("failed to create user: %v", err)
-		if strings.Contains(err.Error(), "UNIQUE") {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("username already taken!"))
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to create user"))
-		return
-	}
-
-	data, err := json.Marshal(user)
-	if err != nil {
-		log.Printf("failed to create json payload: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("user created! but failed to respond"))
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	w.Write(data)
-}
-
-func (c *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("wrong Content-Type"))
-		return
-	}
-
-	var req Request
-	decoder := json.NewDecoder(r.Body)
-	defer r.Body.Close()
-
-	if err := decoder.Decode(&req); err != nil {
-		log.Printf("failed to decode res: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("failed to decode"))
-		return
-	}
-
-	user, err := c.db.GetUserWithUsername(context.Background(), req.Username)
-	if err != nil {
-		log.Printf("no user found: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("a user with this username doesn't exist!"))
-		return
-	}
-
-	err = auth.VerifyPassword(req.Password, user.Password)
-	if err != nil {
-		log.Printf("password doesn't match: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("wrong password!"))
-		return
-	}
-
-	jwtToken, err := auth.CreateJWT(user.ID, c.jwtSecret, EXPIRY_TIME)
-	if err != nil {
-		log.Printf("failed to create token: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("token creation failed!"))
-		return
-	}
-
-	cookie := http.Cookie{
-		Name:     AUTH_KEY,
-		Value:    jwtToken,
-		Path:     "/",
-		Expires:  time.Now().Add(EXPIRY_TIME),
-		MaxAge:   int(EXPIRY_TIME),
-		Secure:   false,
-		HttpOnly: false,
-	}
-
-	http.SetCookie(w, &cookie)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("logged in"))
-}
-
-func (c *apiConfig) handlerUsers() http.Handler {
+func (c *APIConfig) handlerRegister() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rawUser := r.Context().Value(AUTH_KEY)
-		if rawUser == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
+		var req Request
+		defer r.Body.Close()
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondWithError(w, http.StatusBadRequest, "invalid payload", err)
 			return
 		}
-		user, ok := rawUser.(database.GetUserWithIDRow)
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
-			return
-		}
-		users, err := c.db.GetAllUsersExceptCurrent(context.Background(), user.ID)
+
+		password, err := auth.HashPassword(req.Password)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("internal server error"))
+			respondWithError(w, http.StatusInternalServerError, "failed to create user", err)
 			return
 		}
-		c.templates.ExecuteTemplate(w, "chat", struct {
+
+		user, err := c.DB.CreateUser(context.Background(), database.CreateUserParams{
+			Username:  req.Username,
+			Password:  password,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		})
+
+		if err != nil {
+			if strings.Contains(err.Error(), "UNIQUE") {
+				respondWithError(w, http.StatusBadRequest, "username already taken", err)
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, "failed to create user", err)
+			return
+		}
+
+		respondWithJSON(w, http.StatusCreated, user)
+	})
+}
+
+func (c *APIConfig) handlerLogin() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req Request
+		defer r.Body.Close()
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondWithError(w, http.StatusBadRequest, "invalid payload", err)
+			return
+		}
+
+		user, err := c.DB.GetUserWithUsername(context.Background(), req.Username)
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, "user doesnt exist", err)
+			return
+		}
+
+		err = auth.VerifyPassword(req.Password, user.Password)
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, "wrong password", err)
+			return
+		}
+
+		jwtToken, err := auth.CreateJWT(user.ID, c.JwtSecret, EXPIRY_TIME)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "failed to create token", err)
+			return
+		}
+
+		cookie := http.Cookie{
+			Name:     AUTH_KEY,
+			Value:    jwtToken,
+			Path:     "/",
+			Expires:  time.Now().Add(EXPIRY_TIME),
+			MaxAge:   int(EXPIRY_TIME),
+			Secure:   false,
+			HttpOnly: false,
+		}
+		http.SetCookie(w, &cookie)
+		respondWithJSON(w, http.StatusOK, "logged in")
+	})
+}
+
+func (c *APIConfig) handlerChatTemplate() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, err := getUserFromContext(r)
+		if err != nil {
+			respondWithError(w, http.StatusUnauthorized, "unauthorized", err)
+			return
+		}
+
+		users, err := c.DB.GetAllUsersExceptCurrent(context.Background(), user.ID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "failed to get users", err)
+			return
+		}
+
+		c.Templates.ExecuteTemplate(w, "chat", struct {
 			Users    []database.GetAllUsersExceptCurrentRow
 			SenderID uuid.UUID
 			Username string
